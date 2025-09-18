@@ -27,4 +27,5 @@ resource "alicloud_db_instance" "seeme" {
     git_repo             = "terragoat"
     yor_trace            = "7bd1394e-0a79-4288-8f83-5abcca5bf1ba"
   }
+  ssl_action = true
 }
