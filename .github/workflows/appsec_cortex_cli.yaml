@@ -32,6 +32,20 @@ jobs:
         curl -o cortexcli $crtx_url
         chmod +x cortexcli
         ./cortexcli --version
+     # --- NUEVOS PASOS PARA EL ESCANEO DE IMÁGENES ---
+    
+    - name: Build Docker Image
+      run: |
+        docker build -t mi-app-terragoat:latest .
+        
+    - name: Run Cortex CLI Image Scan
+      run: |
+        ./cortexcli \
+          --api-base-url "${CORTEX_API_URL}" \
+          --api-key "${CORTEX_API_KEY}" \
+          --api-key-id "${CORTEX_API_KEY_ID}" \
+          image scan mi-app-terragoat:latest
+          
     - name: Run Cortex CLI Code Scan
       run: |
         ./cortexcli \
