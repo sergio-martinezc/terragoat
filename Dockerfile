@@ -1,32 +1,34 @@
 FROM python:3.9-slim-buster
 
-LABEL maintainer="Professional Services - Palo Alto Networks"
+# Evitamos interacciones de zona horaria que bloquean el build
+ENV DEBIAN_FRONTEND=noninteractive
 
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
-
-# Instalamos dependencias básicas incluyendo lsb-release y ca-certificates
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# 1. Limpieza y actualización con reintentos para estabilidad en Runners
+RUN apt-get clean && rm -rf /var/lib/apt/lists/* && \
+    apt-get update -y && \
+    apt-get install -y --no-install-recommends \
     curl \
-    gnupg \
-    software-properties-common \
-    lsb-release \
+    gnupg2 \
     ca-certificates \
     git \
-    && apt-get clean
+    unzip && \
+    apt-get clean
 
-# Instalación de Terraform usando el método recomendado actual
-RUN curl -fsSL https://apt.releases.hashicorp.com/gpg | gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg \
-    && echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/hashicorp.list \
-    && apt-get update && apt-get install -y terraform \
-    && rm -rf /var/lib/apt/lists/*
+# 2. Instalamos Terraform DIRECTO desde el binario (Evitamos problemas de repositorios APT)
+# Esto es mucho más confiable en entornos corporativos/Runners
+RUN curl -fsSL https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip -o terraform.zip && \
+    unzip terraform.zip && \
+    mv terraform /usr/local/bin/ && \
+    rm terraform.zip
 
-# Instalación de Checkov para escaneo de seguridad
-RUN pip install --no-cache-dir checkov
+# 3. Instalación de Checkov (Herramienta clave para Prisma/XSIAM)
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir checkov
 
 WORKDIR /app
-
-# Nota: Asegúrate de tener el código de TerraGoat en el mismo directorio que este Dockerfile
 COPY . /app/terragoat
 
-CMD ["/bin/bash", "-c", "terraform version && checkov --version && /bin/bash"]
+# Validamos instalaciones
+RUN terraform version && checkov --version
+
+CMD ["/bin/bash"]
